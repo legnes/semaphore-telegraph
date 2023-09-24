@@ -87,8 +87,8 @@ export class Beam extends SceneObject {
         this.node.appendChild(obj.node);
     }
 
-    keyframe_insert(frame) {
-        this.#keyframes.push({ rotation: this.#rotation, frame });
+    keyframe_insert(frame, easing = "linear") {
+        this.#keyframes.push({ rotation: this.#rotation, frame, easing });
     }
 
     play(endFrame) {
@@ -100,7 +100,8 @@ export class Beam extends SceneObject {
 
         const transform = this.#keyframes.map(({ rotation }) => `rotate(${-rotation}rad)`);
         const offset = this.#keyframes.map(({ frame }) => (frame - 1) / (endFrame - 1));
-        this.#animation = this.node.animate({ transform, offset }, 1000 * endFrame / FRAMES_PER_SECOND);
+        const easing = this.#keyframes.map(({ easing }) => easing);
+        this.#animation = this.node.animate({ transform, offset, easing }, 1000 * endFrame / FRAMES_PER_SECOND);
     }
 
     cancel() {

@@ -42,8 +42,13 @@ export class InputControl {
             inputNode.setAttribute(key, attributes[key]);
         }
         inputNode.style.margin = "4px";
-        if (this.#type === "number") {
-            inputNode.style.width = "4em";
+        switch (this.#type) {
+            case "number":
+                inputNode.style.width = "4em";
+                break;
+            case "text":
+                inputNode.style.width = "20em";
+                break;
         }
 
         // Label element

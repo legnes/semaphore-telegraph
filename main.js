@@ -2,14 +2,14 @@ import { Beam, Scene } from "./scene-objects.js";
 import { InputControl, mod } from "./utils.js";
 
 // Input
-const input = new InputControl({ type: "text", value: "abcdefghijklmnopqrstuvwxyz", style: "width: 400px" }, "Input");
+const input = new InputControl({ type: "text", value: "abcdefghijklmnopqrstuvwxyz" }, "Input");
 
 // Settings
 
 //// Timing
 const hold_frames = new InputControl({ type: "number", value: 48 }, "Hold Time (frames)");
-const crossbeam_speed = new InputControl({ type: "number", value: 96 }, "Arm Speed Speed (frames per full rotation)");
-const arm_speed = new InputControl({ type: "number", value: 48 }, "Arm Speed Speed (frames per full rotation)");
+const crossbeam_speed = new InputControl({ type: "number", value: 512 }, "Arm Speed Speed (frames per full rotation)");
+const arm_speed = new InputControl({ type: "number", value: 256 }, "Arm Speed Speed (frames per full rotation)");
 
 //// Movement
 const should_reset_pose =  true;
@@ -17,6 +17,9 @@ const can_crossbeam_flip = new InputControl({ type: "checkbox", checked: true },
 
 // Physics
 const arm_friction = new InputControl({ type: "range", min: 0, max: 1, step: 0.05, value: 0.5 }, "Arm Friction (0 - 1)");
+const easing_fn = new InputControl({ type: "text", value: "cubic-bezier(0.65, 0, 0.35, 1)" }, "Easing function (css)");
+const min_easing_angle = 30 * Math.PI / 180;
+const default_easing = "ease-out";
 
 // Rerun
 new InputControl({ type: "button", value: "Rerun" }, "", run);
@@ -91,21 +94,26 @@ function set_rotation(obj, rad) {
 }
 
 
-function animate_rotation(obj, angle_end, frame_start, frame_end) {
-    obj.keyframe_insert(frame_start);
+function get_easing_fn(angle_diff) {
+    return Math.abs(angle_diff) > min_easing_angle ? easing_fn.value : default_easing;
+}
+
+
+function animate_rotation(obj, angle_end, frame_start, frame_end, easing) {
+    obj.keyframe_insert(frame_start, easing);
     set_rotation(obj, angle_end);
     obj.keyframe_insert(frame_end);
 }
 
 
 function hold_for(obj, frame) {
-    obj.keyframe_insert(frame)
+    obj.keyframe_insert(frame);
 }
 
 
 function rotate_by(obj, radians, frame_start, frame_end) {
-    const angle_end = get_rotation(obj) + radians
-    animate_rotation(obj, angle_end, frame_start, frame_end)
+    const angle_end = get_rotation(obj) + radians;
+    animate_rotation(obj, angle_end, frame_start, frame_end, get_easing_fn(radians));
 }
 
 
@@ -126,7 +134,7 @@ function rotate_to(
 
     const frame_end = frame_start + Math.ceil(frames_per_rotation * Math.abs(angle_diff) / two_pi);
 
-    animate_rotation(obj, angle_end, frame_start, frame_end);
+    animate_rotation(obj, angle_end, frame_start, frame_end, get_easing_fn(angle_diff));
 
     return [frame_end, angle_diff];
 }
