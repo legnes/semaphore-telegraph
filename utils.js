@@ -15,6 +15,7 @@ inputPanel.style.position = "absolute";
 inputPanel.style.top = "0";
 inputPanel.style.left = "0";
 inputPanel.style.margin = "4px";
+inputPanel.open = false;
 const inputSummary = document.createElement("summary");
 inputSummary.innerHTML = "Settings";
 const inputContainer = document.createElement("div");
@@ -24,25 +25,58 @@ inputPanel.appendChild(inputSummary);
 inputPanel.appendChild(inputContainer);
 document.body.appendChild(inputPanel);
 
+export class InputSection {
+    constructor(name, options) {
+        const separatorNode = document.createElement("hr");
+        separatorNode.style = "width: 100%;";
+        const headerNode = document.createElement("strong");
+        headerNode.innerHTML = name;
+        if (options?.delimit !== false) {
+            inputContainer.appendChild(separatorNode);
+        }
+        inputContainer.appendChild(headerNode);
+    }
+}
+
 export class InputControl {
     #type;
     #node;
+    #inputNode;
 
     value;
 
     constructor(attributes, label, onChange) {
-        if (attributes.type == null) {
+        const { type } = attributes;
+        if (type == null) {
             throw new Error("input control requires a type");
         }
-        this.#type = attributes.type;
+        this.#type = type;
 
-        // Input element
-        const inputNode = document.createElement("input");
+        // Element (input or select)
+        let inputNode;
+        if (type === "select") {
+            inputNode = document.createElement("select");
+            const options = attributes.options;
+            for (const option of options) {
+                const optionNode = document.createElement("option");
+                optionNode.value = option;
+                optionNode.innerHTML = option;
+                inputNode.appendChild(optionNode);
+            }
+            inputNode.value = attributes.value;
+            delete attributes.options;
+            delete attributes.value;
+        } else {
+            inputNode = document.createElement("input");
+        }
+        this.#inputNode = inputNode;
+
+        // Attributes and sytle
         for (const key in attributes) {
             inputNode.setAttribute(key, attributes[key]);
         }
         inputNode.style.margin = "4px";
-        switch (this.#type) {
+        switch (type) {
             case "number":
                 inputNode.style.width = "4em";
                 break;
@@ -60,7 +94,7 @@ export class InputControl {
         this.value = this.#getValue(inputNode);
 
         inputNode.addEventListener(this.#type === "button" ? "click" : "change", (evt) => {
-            this.value = this.#getValue(evt.target);
+            this.value = this.#getValue();
             onChange?.();
         });
 
@@ -71,14 +105,23 @@ export class InputControl {
         inputContainer.appendChild(this.#node);
     }
 
-    #getValue(inputNode) {
+    #getValue() {
         switch (this.#type) {
             case "checkbox":
-                return inputNode.checked;
+                return this.#inputNode.checked;
             case "text":
-                return inputNode.value;
+            case "select":
+                return this.#inputNode.value;
             default:
-                return +inputNode.value;
+                return +this.#inputNode.value;
         }
+    }
+
+    enable() {
+        this.#inputNode.disabled = false;
+    }
+
+    disable() {
+        this.#inputNode.disabled = true;
     }
 }

@@ -42,6 +42,11 @@ export class Scene extends SceneObject {
         const { x, y, width, height } = this.#node.getBBox();
         this.#node.setAttribute("viewBox", `${x - 10} ${y -  20} ${width + 20} ${height + 20}`);
     }
+
+    clear() {
+        this.children.forEach(child => this.#node.removeChild(child.node));
+        this.children = new Set();
+    }
 }
 
 export class Beam extends SceneObject {
