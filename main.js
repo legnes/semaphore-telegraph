@@ -1,8 +1,14 @@
 import { Beam, Scene } from "./scene-objects.js";
 import { InputControl, InputSection, mod } from "./utils.js";
 
+let message = "abcdefghijklmnopqrstuvwxyz";
+try {
+    const queryParams = new URLSearchParams(window.location.search);
+    message = queryParams.get("m") ?? message;
+} catch (e) { console.error(e); }
+
 // Input
-const input = new InputControl({ type: "text", value: "abcdefghijklmnopqrstuvwxyz" }, "Input");
+const input = new InputControl({ type: "text", value: message }, "Input");
 // const input = new InputControl({ type: "text", value: "bc" }, "Input");
 
 // Settings
@@ -407,6 +413,13 @@ function rotate_arms(code, frame_start) {
 
 
 function run() {
+    // Set query param
+    try {
+        const url = new URL(window.location);
+        url.searchParams.set("m", input.value);
+        history.pushState({}, "", url.toString());
+    } catch (e) { console.error(e); }
+
     // Reset
     scene.cancel();
     scene.reset();
