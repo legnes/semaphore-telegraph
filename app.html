@@ -11,7 +11,7 @@
             @font-face {
                 font-family: "Chappe Bold";
                 src:
-                    url("assets/fonts/Chappe-bold.otf") format("opentype"),
+                    url("assets/fonts/Chappe Bold.otf") format("opentype"),
                 font-weight: bold;
             }
             @font-face {
@@ -20,13 +20,15 @@
                     url("assets/fonts/ChappeTelegraph-Telegraph.otf") format("opentype"),
             }
             html, body {
+                width: 100%;
+                height: 100%;
                 margin: 0;
                 overflow: hidden;
             }
             #wrapper {
                 position: relative;
-                width: 100vw;
-                height: 100vh;
+                width: 100%;
+                height: 100%;
                 overflow: hidden;
             }
             #backgroundImage {
@@ -38,11 +40,76 @@
                 transform: translate(-50%, 0);
                 z-index: -1;
             }
+            #newMessageControls {
+                display: flex;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                padding: 16px;
+/*                gap: 16px;*/
+                box-sizing: border-box;
+                z-index: 2;
+            }
+            #newMessageButton {
+                width: 48px;
+                height: 48px;
+                flex-shrink: 0;
+                padding: 0;
+                border: 2px solid #000000f0;
+                border-radius: 48px;
+                background-color: #ffffff60;
+                font-size: 36px;
+                cursor: pointer;
+            }
+            #newMessageButton:hover {
+                background-color: #ffffff80;
+            }
+            #newMessageButton:active {
+                border-color: #000000a0;
+            }
+            #newMessageContainer {
+                flex-grow: 1;
+                max-width: 30em;
+                min-height: calc(2em + 20px);
+                margin: 0 0 0 8px;
+                padding: 16px;
+                border-radius: 8px;
+                background-color: #ffffff60;
+                overflow: hidden;
+            }
+            #newMessageActionContainer {
+                width: 100%;
+                display: flex;
+                gap: 4px;
+                margin-bottom: 8px;
+            }
+            #newMessageInput {
+                width: 100%;
+                box-sizing: border-box;
+                font-size: 12pt;
+            }
+            #newMessageDisplay {
+                font-family: "Chappe Bold";
+                font-size: 12pt;
+                word-break: break-word;
+            }
+            .sr-only:not(:focus):not(:active) {
+                clip: rect(0 0 0 0);
+                clip-path: inset(50%);
+                height: 1px;
+                overflow: hidden;
+                position: absolute;
+                white-space: nowrap;
+                width: 1px;
+            }
             #message {
+                max-width: 80%;
                 position: absolute;
                 left: 50%;
                 bottom: 2em;
                 transform: translate(-50%, 0);
+                margin: auto;
                 color: white;
                 font-family: "Chappe Tall";
                 font-size: 20pt;
@@ -51,18 +118,23 @@
             svg {
                 filter: blur(0.6px);
             }
-            .tint-dark {
-                filter: brightness(0.1);
-            }
-            .tint-med {
-                filter: brightness(0.3);
-            }
         </style>
         <script type="module" src="app-main.js"></script>
     </head>
     <body>
         <div id="wrapper">
             <img id="backgroundImage" src="assets/tower-far-clean.png"/>
+            <div id="newMessageControls">
+                <button id="newMessageButton">➕</button>
+                <div id="newMessageContainer" class="sr-only">
+                    <div id="newMessageActionContainer">
+                        <input id="newMessageInput" type="text" name="newMessage" placeholder="Type a message...">
+                        <button id="newMessageGo" title="refresh with message">➡️</button>
+                        <button id="newMessageCopy" title="copy message link to clipboard">📋</button>
+                    </div>
+                    <div id="newMessageDisplay"></div>
+                </div>
+            </div>
             <div id="message"></div>
         </div>
     </body>

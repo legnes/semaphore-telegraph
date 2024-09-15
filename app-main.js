@@ -99,7 +99,7 @@ class Beam extends SceneObject {
         this.node.style.transform = `rotate(${-val}rad)`;
     }
 
-    constructor(x, y, width, height, pivotX, pivotY, href, className) {
+    constructor(x, y, width, height, pivotX, pivotY, href) {
         super();
 
         pivotX =
@@ -119,7 +119,6 @@ class Beam extends SceneObject {
             width,
             height,
             href,
-            class: className,
             preserveAspectRatio: "none",
         }));
     }
@@ -159,7 +158,6 @@ class Beam extends SceneObject {
     }
 }
 
-// TODO: Decide how this should work
 function xor(str) {
     const verySecretKey = "ihiHwhwOeoWBgljBRguwrugWhgwe247yrlouhG84rkno84ll";
     const res = [...str].map((char, i) => String.fromCodePoint(char.codePointAt(0) ^ verySecretKey.codePointAt(i % verySecretKey.length))).join("");
@@ -176,21 +174,59 @@ function encode(str) {
     return xor(str);
 }
 
+// Set up controls
+document.getElementById("newMessageButton")?.addEventListener("click", () => {
+    document.getElementById("newMessageContainer")?.classList.toggle("sr-only");
+});
+const newMessageInput = document.getElementById("newMessageInput");
+const newMessageDisplay = document.getElementById("newMessageDisplay");
+const newMessageCopy = document.getElementById("newMessageCopy");
+let newMessageCopyTimeout;
+newMessageInput?.addEventListener("input", () => {
+    if (newMessageCopyTimeout) {
+        clearTimeout(newMessageCopyTimeout);
+        newMessageCopy.innerHTML = "📋";
+    }
+    newMessageDisplay.innerHTML = newMessageInput.value;
+});
+document.getElementById("newMessageGo")?.addEventListener("click", () => {
+    const url = new URL(window.location);
+    url.searchParams.set("m", encode(newMessageInput.value));
+    window.location = url;
+});
+newMessageCopy?.addEventListener("click", () => {
+    const url = new URL(window.location);
+    url.searchParams.set("m", encode(newMessageInput.value));
+    // TODO: Does not work on iphone!
+    navigator.clipboard.writeText(url.toString());
+    newMessageCopy.innerHTML = "✅";
+    if (newMessageCopyTimeout) {
+        clearTimeout(newMessageCopyTimeout)
+    }
+    newMessageCopyTimeout = setTimeout(() => {
+        newMessageCopy.innerHTML = "📋";
+    }, 4000);
+});
+
+// Load message
 let message = "abcdefghijklmnopqrstuvwxyz";
 try {
     const queryParams = new URLSearchParams(window.location.search);
     message = decode(queryParams.get("m")) ?? message;
+    console.log(`message: [${message}]`);
 } catch (e) { console.error(e); }
 
 //// Input
 const input = message;
+const should_replay = true;
 
 //// Timing
+const start_delay_s = 10;
 const hold_frames = 48;
 
 //// Movement
 const should_reset_pose = true;
-const can_crossbeam_flip = true;
+let can_crossbeam_flip = true;
 const arm_friction = 0.9;
 
 //// Size
@@ -256,7 +292,7 @@ const codes = {
     "x": [90, 0, -90],
     "y": [45, 0, -90],
     "z": [0, 90, 0],
-    " ": [0, 0, 0],
+    " ": [0, -90, 90],
 }
 
 // Object Setup
@@ -267,10 +303,10 @@ function rebuild() {
     scene.clear();
     const postWidth = 2;
     const postHeight = 12;
-    post = new Beam(0, 0, postWidth, postHeight, null, null, "assets/01_Tower_Central Spear_01 2.png", "tint-dark");
-    crossbeam = new Beam(-0.45, 10, crossbeam_length, crossbeam_width, -0.2, "center", "assets/02_Tower_Main Arm_01 2.png", "tint-med");
-    left_arm = new Beam(9, 10.2, arm_width, arm_length, "center", 11.2, "assets/03_Tower_Flipper Left_01 2.png", "tint-med");
-    right_arm = new Beam(-9.8, 10, arm_width, arm_length, "center", 11, "assets/04_Tower_Flipper Right_01 2.png", "tint-med");
+    post = new Beam(0, 0, postWidth, postHeight, null, null, "assets/post.png");
+    crossbeam = new Beam(-0.45, 10, crossbeam_length, crossbeam_width, -0.2, "center", "assets/crossbeam.png");
+    left_arm = new Beam(9, 10.2, arm_width, arm_length, "center", 11.2, "assets/left_arm.png");
+    right_arm = new Beam(-9.8, 10, arm_width, arm_length, "center", 11, "assets/right_arm.png");
     crossbeam.addChild(left_arm);
     crossbeam.addChild(right_arm);
     post.addChild(crossbeam);
@@ -582,13 +618,13 @@ function run() {
     scene.reset();
     recalculate();
 
-    let t = 1
+    let t = start_delay_s * FRAMES_PER_SECOND;
 
-    // Initial pose (A)
+    // Initial pose
     if (should_reset_pose) {
         set_rotation(crossbeam, 0)
-        set_rotation(right_arm, 0)
-        set_rotation(left_arm, 0)
+        set_rotation(right_arm, -Math.PI / 2)
+        set_rotation(left_arm, Math.PI / 2)
     }
 
     for (const letter of input) {
@@ -614,11 +650,19 @@ function run() {
     }
 
     // We also have to reset at the end
-    // TODO: sort out whats going on -- why do we need this?
     if (should_reset_pose) {
+        // TODO: This is unwinding all the way, fix
+        can_crossbeam_flip = false;
+        t = rotate_crossbeam([0, -90, 90], t);
+        t = rotate_arms([0, -90, 90], t);
+        can_crossbeam_flip = true;
         set_rotation(crossbeam, 0)
-        set_rotation(right_arm, 0)
-        set_rotation(left_arm, 0)
+        set_rotation(right_arm, -Math.PI / 2)
+        set_rotation(left_arm, Math.PI / 2)
+    }
+
+    if (should_replay) {
+        setTimeout(() => run(), t / FRAMES_PER_SECOND * 1000);
     }
 
     scene.play(t);
