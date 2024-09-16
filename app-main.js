@@ -10,8 +10,6 @@ function mod(v, n) {
     return ((v % n) + n) % n;
 }
 
-const FRAMES_PER_SECOND = 24;
-
 class SceneObject {
     children = new Set();
 
@@ -158,20 +156,102 @@ class Beam extends SceneObject {
     }
 }
 
-function xor(str) {
-    const verySecretKey = "ihiHwhwOeoWBgljBRguwrugWhgwe247yrlouhG84rkno84ll";
-    const res = [...str].map((char, i) => String.fromCodePoint(char.codePointAt(0) ^ verySecretKey.codePointAt(i % verySecretKey.length))).join("");
+function toBytes(utf16) {
+    return [utf16 >> 8, utf16 & 0xff];
+}
+
+function fromBytes(high, low) {
+    return (high << 8) + low;
+}
+
+function toSurrogates(unicode) {
+    const LEAD_OFFSET = 0xD800 - (0x10000 >> 10);
+    const lead = LEAD_OFFSET + (unicode >> 10);
+    const trail = 0xDC00 + (unicode & 0x3FF);
+    return [lead, trail];
+}
+
+function fromSurrogates(lead, trail) {
+    const SURROGATE_OFFSET = 0x10000 - (0xD800 << 10) - 0xDC00;
+    return (lead << 10) + trail + SURROGATE_OFFSET;
+}
+
+function isLeadSurrogate(utf16) {
+    return (utf16 >> 10) === 0b110110;
+}
+
+function isTrailSurrogate(utf16) {
+    return (utf16 >> 10) === 0b110111;
+}
+
+const verySecretKey = "📲🐁😑🎓🎦🔧🎳👿🍒💸👫🔀👧🌷💂🐽💱👯😝👀😊💇😜🐋😽🐹🍼🐄📶🎨💇🔂😹🏫👝🚲😩🚩😨🕖🐺😊🔛🆖🚊🚽😼🚞😓🍤🛄😹💙🍳";
+function toEmoji(str) {
+    const keyArray = [...verySecretKey];
+    let res = "";
+    for (let i = 0; i < str.length; i++) {
+        const utf16 = str.charCodeAt(i);
+        const [high, low] = toBytes(utf16);
+        // console.log("utf", utf16, "high low", high, low);
+
+        const keyChar = keyArray[i % keyArray.length];
+        const keyUnicode = keyChar.codePointAt(0);
+        const [lead, trail] = toSurrogates(keyUnicode);
+        // console.log("key", keyChar, keyUnicode, lead.toString(2), trail.toString(2));
+        // if (!isLeadSurrogate(lead)) { throw new Error("lead is not lead"); }
+        // if (!isTrailSurrogate(trail)) { throw new Error("trail is not trail"); }
+
+        const codedLead = lead ^ high;
+        const codedTrail = trail ^ low;
+        // console.log("coded", codedLead.toString(2), codedTrail.toString(2));
+        const codedUnicode = fromSurrogates(codedLead, codedTrail);
+        const codedChar = String.fromCodePoint(codedUnicode);
+        // console.log("coded", codedUnicode, codedChar);
+        res += codedChar;
+    }
     return res;
 }
 
-function decode(str) {
-    // return xor(decodeURIComponent(str));
-    return xor(str);
+function xorUtf16(str, key, i) {
+    const strUtf16 = str.charCodeAt(i);
+    const keyUtf16 = key.charCodeAt(i % key.length);
+    return strUtf16 ^ keyUtf16;
+}
+
+function fromEmoji(str) {
+    let res = "";
+    for (let i = 0; i < str.length - 1;) {
+        const high = xorUtf16(str, verySecretKey, i++);
+        const low = xorUtf16(str, verySecretKey, i++);
+        const outUtf16Lead = fromBytes(high, low);
+        // console.log(high, low, outUtf16Lead);
+
+        let outUnicode;
+        if (isLeadSurrogate(outUtf16Lead)) {
+            // console.log("found high surrogate");
+            const high = xorUtf16(str, verySecretKey, i++);
+            const low = xorUtf16(str, verySecretKey, i++);
+            const outUtf16Trail = fromBytes(high, low);
+            // console.log(high, low, outUtf16Trail);
+            outUnicode = fromSurrogates(outUtf16Lead, outUtf16Trail);
+        } else {
+            outUnicode = outUtf16Lead;
+        }
+
+        const outChar = String.fromCodePoint(outUnicode);
+        // console.log(outUnicode, "-->", outChar);
+        res += outChar;
+    }
+    return res;
 }
 
 function encode(str) {
-    // return encodeURIComponent(xor(str).toWellFormed());
-    return xor(str);
+    return toEmoji(str);
+    // return encodeURIComponent(toEmoji(str).toWellFormed());
+}
+
+function decode(str) {
+    return fromEmoji(str);
+    // return fromEmoji(decodeURIComponent(str));
 }
 
 // Set up controls
@@ -213,7 +293,7 @@ let message = "abcdefghijklmnopqrstuvwxyz";
 try {
     const queryParams = new URLSearchParams(window.location.search);
     message = decode(queryParams.get("m")) ?? message;
-    console.log(`message: [${message}]`);
+    // console.log(`message: [${message}]`);
 } catch (e) { console.error(e); }
 
 //// Input
@@ -221,7 +301,8 @@ const input = message;
 const should_replay = true;
 
 //// Timing
-const start_delay_s = 10;
+const FRAMES_PER_SECOND = 24;
+const start_delay_s = 2;
 const hold_frames = 48;
 
 //// Movement
