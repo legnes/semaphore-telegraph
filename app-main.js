@@ -267,9 +267,12 @@ document.getElementById("newMessageGo")?.addEventListener("click", () => {
 newMessageCopy?.addEventListener("click", () => {
     const url = new URL(window.location);
     url.searchParams.set("m", encode(newMessageInput.value));
-    // TODO: Does not work on iphone!
-    navigator.clipboard.writeText(url.toString());
-    newMessageCopy.innerHTML = "✅";
+    try {
+        navigator.clipboard.writeText(url.toString());
+        newMessageCopy.innerHTML = "✅";
+    } catch (e) {
+        newMessageCopy.innerHTML = "⚠️";
+    }
     if (newMessageCopyTimeout) {
         clearTimeout(newMessageCopyTimeout)
     }
