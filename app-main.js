@@ -156,11 +156,11 @@ class Beam extends SceneObject {
     }
 }
 
-function toBytes(utf16) {
+function utf16ToBytes(utf16) {
     return [utf16 >> 8, utf16 & 0xff];
 }
 
-function fromBytes(high, low) {
+function bytesToUtf16(high, low) {
     return (high << 8) + low;
 }
 
@@ -190,23 +190,17 @@ function toEmoji(str) {
     let res = "";
     for (let i = 0; i < str.length; i++) {
         const utf16 = str.charCodeAt(i);
-        const [high, low] = toBytes(utf16);
-        // console.log("utf", utf16, "high low", high, low);
+        const [high, low] = utf16ToBytes(utf16);
 
         const keyChar = keyArray[i % keyArray.length];
         const keyUnicode = keyChar.codePointAt(0);
         const [lead, trail] = toSurrogates(keyUnicode);
-        // console.log("key", keyChar, keyUnicode, lead.toString(2), trail.toString(2));
-        // if (!isLeadSurrogate(lead)) { throw new Error("lead is not lead"); }
-        // if (!isTrailSurrogate(trail)) { throw new Error("trail is not trail"); }
 
-        const codedLead = lead ^ high;
-        const codedTrail = trail ^ low;
-        // console.log("coded", codedLead.toString(2), codedTrail.toString(2));
-        const codedUnicode = fromSurrogates(codedLead, codedTrail);
-        const codedChar = String.fromCodePoint(codedUnicode);
-        // console.log("coded", codedUnicode, codedChar);
-        res += codedChar;
+        const encodedLead = lead ^ high;
+        const encodedTrail = trail ^ low;
+        const encodedUnicode = fromSurrogates(encodedLead, encodedTrail);
+        const encodedChar = String.fromCodePoint(encodedUnicode);
+        res += encodedChar;
     }
     return res;
 }
@@ -222,24 +216,20 @@ function fromEmoji(str) {
     for (let i = 0; i < str.length - 1;) {
         const high = xorUtf16(str, verySecretKey, i++);
         const low = xorUtf16(str, verySecretKey, i++);
-        const outUtf16Lead = fromBytes(high, low);
-        // console.log(high, low, outUtf16Lead);
+        const decodedUtf16Lead = bytesToUtf16(high, low);
 
-        let outUnicode;
-        if (isLeadSurrogate(outUtf16Lead)) {
-            // console.log("found high surrogate");
+        let decodedUnicode;
+        if (isLeadSurrogate(decodedUtf16Lead)) {
             const high = xorUtf16(str, verySecretKey, i++);
             const low = xorUtf16(str, verySecretKey, i++);
-            const outUtf16Trail = fromBytes(high, low);
-            // console.log(high, low, outUtf16Trail);
-            outUnicode = fromSurrogates(outUtf16Lead, outUtf16Trail);
+            const decodedUtf16Trail = bytesToUtf16(high, low);
+            decodedUnicode = fromSurrogates(decodedUtf16Lead, decodedUtf16Trail);
         } else {
-            outUnicode = outUtf16Lead;
+            decodedUnicode = decodedUtf16Lead;
         }
 
-        const outChar = String.fromCodePoint(outUnicode);
-        // console.log(outUnicode, "-->", outChar);
-        res += outChar;
+        const decodedChar = String.fromCodePoint(decodedUnicode);
+        res += decodedChar;
     }
     return res;
 }
@@ -289,11 +279,10 @@ newMessageCopy?.addEventListener("click", () => {
 });
 
 // Load message
-let message = "abcdefghijklmnopqrstuvwxyz";
+let message = "the quick brown fox jumped over the lazy dog";
 try {
     const queryParams = new URLSearchParams(window.location.search);
     message = decode(queryParams.get("m")) ?? message;
-    // console.log(`message: [${message}]`);
 } catch (e) { console.error(e); }
 
 //// Input
@@ -320,16 +309,6 @@ const arm_width = 4;
 // "linear", "easing", "physics"
 const animation_mode = "physics";
 
-function updateAnimationInputs() {
-    const linear_settings = [ crossbeam_speed, arm_speed ];
-    const easing_settings = [ ...linear_settings, easing_fn ];
-    const physics_settings = [ crossbeam_torque, arm_torque ];
-
-    // Enable relevant
-    const mode = animation_mode;
-    const settings = mode === "physics" ? physics_settings : mode === "easing" ? easing_settings : linear_settings;
-}
-
 // Linear
 const crossbeam_speed = 512;
 const arm_speed = 256;
@@ -342,12 +321,10 @@ const default_easing = "ease-out";
 // Physics
 const crossbeam_torque = 40;
 const arm_torque = 10;
-updateAnimationInputs();
 
 // Config
 const codes = {
     "a": [0, 0, 0],
-    // TODO: CHECK LETTERS these don't agree with font
     "b": [-45, 0, -90],
     "c": [-90, 0, 0],
     "d": [45, 180, 180],
@@ -356,14 +333,14 @@ const codes = {
     "g": [90, 0, 0],
     "h": [45, 0, 0],
     "i": [0, 180, 0],
-    "j": [0, 0, 0],
+    "j": [0, 90, -90],
     "k": [-45, 180, -90],
     "l": [90, 180, 0],
     "m": [45, 90, 0],
     "n": [0, 0, 180],
     "o": [-45, 0, 180],
     "p": [90, 0, 180],
-    "q": [45, 0, 180],
+    "q": [45, 180, 0],
     "r": [0, 0, -90],
     "s": [-45, 0, -90],
     "t": [90, 90, 180],
@@ -373,6 +350,16 @@ const codes = {
     "x": [90, 0, -90],
     "y": [45, 0, -90],
     "z": [0, 90, 0],
+    "1": [90, 180, -90],
+    "2": [45, 180, -90],
+    "3": [0, 180, -90],
+    "4": [-45, 180, -90],
+    "5": [-90, 180, -90],
+    "6": [45, 90, 0],
+    "7": [45, 180, -90],
+    "8": [0, 180, -90],
+    "9": [-45, 180, -90],
+    "0": [-90, 90, -90],
     " ": [0, -90, 90],
 }
 
@@ -407,7 +394,6 @@ function recalculate() {
     const w_arm = arm_width;
     arm_mass = l_arm * w_arm *  w_arm * density_of_wood;
 
-    // TODO: Fix this calc...
     crossbeam_moment_of_inertia = (1 / 12) * crossbeam_mass * l_cross * l_cross;
     arm_moment_of_inertia = (1 / 12) * arm_mass * l_arm * l_arm;
 }
@@ -524,7 +510,6 @@ function rotate_to_physics(
     const coeff_friction = 0.1;
     const axle_radius = 0.1;
     const g = 9.8;
-    // TODO: This is made up to make things feel right
     const mechanical_advantage = 20000;
     const min_w = 0.05;
     const fps = 24;
@@ -536,7 +521,6 @@ function rotate_to_physics(
     let angle = angle_start;
     while (true) {
         // Apply turning force
-        // TODO: Use real physics for this
         w += direction * torque * mechanical_advantage * dt / moment_of_inertia;
 
         // Apply friction
@@ -555,25 +539,21 @@ function rotate_to_physics(
         frame++;
 
         const progress = Math.abs((angle - angle_start) / angle_diff);
-        // console.log(frame, rad_to_deg(angle), direction, w, progress);
 
         const reverse_point = 0.5;
 
         // If past halfway, slow it down
         if (progress > reverse_point && direction === angle_direction) {
-            // console.log("reverse!");
             direction *= -1;
         }
 
         // If going the wrong way, correct
         if (progress > reverse_point && w * angle_diff < 0) {
-            // console.log("overshoot!")
             w = angle_direction * min_w;
             direction = 0;
         }
 
         if (progress > reverse_point && Math.abs(w) < min_w) {
-            // console.log("too slow!")
             w = angle_direction * min_w;
             if (Math.abs((1 - progress) * angle_diff) > deg_to_rad(0.1)) {
                 direction = angle_direction
@@ -582,7 +562,6 @@ function rotate_to_physics(
             }
         }
 
-        // TODO: tweak these rules, add a little more character here...
         //  - Long turn: stop torquing for a while (max_w?)
         if (progress > 0.9 && Math.abs(w) < 2 * min_w) {
             direction = 0;
@@ -590,21 +569,14 @@ function rotate_to_physics(
 
         // If arrived, end
         if (progress > 1) {
-            // console.log("end");
             break;
         }
 
         // Failsafe
         if (frame - frame_start > 1000) {
-            // console.log("failsafe");
             break;
         }
     }
-
-    // const frame_end = frame_start + Math.ceil(frames_per_rotation * Math.abs(angle_diff) / two_pi);
-
-    // animate_rotation(obj, angle_end, frame_start, frame_end, false);
-
     return frame;
 }
 
@@ -613,7 +585,6 @@ function rotate_crossbeam(code, frame_start) {
     // Set up freewheeling arms
     let freewheel_start = frame_start;
     function freewheel_arms(crossbeam_change, freewheel_end, easing) {
-        // TODO: for physics, use real forces for this
         if (arm_friction < 1) {
             const isPhysics = animation_mode === "physics";
             const arm_freewheel = crossbeam_change * (arm_friction - 1);
@@ -655,7 +626,7 @@ function rotate_arms(code, frame_start) {
     const crossbeam_expected = deg_to_rad(code[0])
     const crossbeam_actual = get_rotation(crossbeam)
     const crossbeam_diff = normalized_angle_diff(crossbeam_expected, crossbeam_actual, two_pi)
-    const is_crossbeam_flipped = Math.abs(crossbeam_diff) > 0.001
+    const is_crossbeam_flipped = Math.abs(crossbeam_diff) > 0.1
 
     let first_arm = right_arm;
     let first_rotation = code[1];
@@ -732,10 +703,13 @@ function run() {
 
     // We also have to reset at the end
     if (should_reset_pose) {
-        // TODO: This is unwinding all the way, fix
         can_crossbeam_flip = false;
         t = rotate_crossbeam([0, -90, 90], t);
         t = rotate_arms([0, -90, 90], t);
+        t += hold_frames;
+        hold_for(crossbeam, t);
+        hold_for(right_arm, t);
+        hold_for(left_arm, t);
         can_crossbeam_flip = true;
         set_rotation(crossbeam, 0)
         set_rotation(right_arm, -Math.PI / 2)
